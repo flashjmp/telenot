@@ -9,10 +9,20 @@ if (!logLevels.includes(loglevel)) {
   loglevel = 'info';
 }
 
+const { createLogger, format, transports } = require('winston');
+const { json } = require('express/lib/response');
+const { splat, combine, timestamp, label, printf, simple } = format;
+const colorizer = winston.format.colorize();
+
+const myFormat = printf( ({ level, message, timestamp }) => {
+  return `${timestamp} ${level}: ${message}`;
+});
+
 module.exports = {
   logger: winston.createLogger({
     level: loglevel,
-    format: winston.format.json(),
+    format: winston.format.json(),    
+    //format: winston.format.combine(winston.format.colorize(), alignColorsAndTime),
     transports: [
       //
       // - Write to all logs with level `info` and below to `combined.log`
@@ -31,7 +41,13 @@ module.exports = {
       const combinedLogs = logger.transports.find(transport => transport.filename === 'combined.log');
       logger.remove(combinedLogs);
       logger.add(new winston.transports.Console({
-        format: winston.format.simple(),
+        //format: winston.format.simple(),
+        //format: myFormat,
+        format: combine(
+          //label({ label: 'CUSTOM', message: true }),
+          timestamp(),
+           myFormat
+        ),
       }));
     }
   },

@@ -56,6 +56,7 @@ module.exports = class Telenot {
 
   decodeHex(hex, contentName) {
     // get binary at hex position 0XA
+    //this.logger.debug(`decodeHex started - ContentName: ${contentName} `);
     const parts = hex.slice(config.Telenot[contentName].offset, hex.length);
     // create position table
     const byteMap = new Map();
@@ -89,9 +90,11 @@ module.exports = class Telenot {
       });
     } else if (this.statesPrevious[contentName] !== byteMap) {
       // find difference
+      //this.logger.debug(`determining byteMap changes`);
       byteMap.forEach((byteValue, byteIndex) => {
         const binaryStr = utilFunc.reverseANumber(Number(byteValue).toString(2));
         const prevValue = this.statesPrevious[contentName].get(byteIndex);
+        //this.logger.debug(`byteValue: ${byteValue} - prevValue: ${prevValue} `);
         if (prevValue && prevValue !== byteValue) {
           const prevByte = utilFunc.reverseANumber(Number(prevValue).toString(2));
           for (let bitIndex = 0; bitIndex < binaryStr.length; bitIndex += 1) {
@@ -102,9 +105,9 @@ module.exports = class Telenot {
             );
             const bitValue = binaryStr.charAt(bitIndex);
             // store bits
-            const prevBit = prevByte[bitIndex];
+            const prevBit = prevByte[bitIndex];            
             if (bitValue !== prevBit) {
-              // if discover is turned on, send position
+              // if discover is turned on, send position      
               if (process.env.DISCOVER === 'true') {
                 if (property === undefined || property.name === '') {
                   this.logger.debug(`${contentName} - Byte:${byteIndex} Bit:${bitIndex} Position:${seachIndex}: Hex: 0x${Number(seachIndex).toString(16)} Old: ${prevBit} - New ${bitValue}`);

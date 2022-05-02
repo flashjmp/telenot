@@ -3,47 +3,49 @@ const config = require('./../config/config');
 
 const SEND_NORM = '6802026840024216';
 const SEND_NORM_REGEX = /^(.*)6802026840024216(.*?)/;
-const REGEX_SICHERUNGSBEREICH = /^683c3c687302050200053(.*?)16$/;
+const REGEX_MELDEBEREICHE      = /^(.*)683e3e68730232240005000200(.*?)16$/;
+const REGEX_MELDEGRUPPEN       = /^682e2e687302222400000001(.*?)16$/;
+const REGEX_SICHERUNGSBEREICH  = /^683c3c687302050200053(.*?)16$/;
 const REGEX_SICHERUNGSBEREICH2 = /^682c2c687302050200053(.*?)16$/;
 const SEND_16 = /(.*)16$/;
 const CONF_ACK = Buffer.from([0x68, 0x02, 0x02, 0x68, 0x00, 0x02, 0x02, 0x16]);
 
-const timeout = 15000;
+
 
 const TelenotMsgType = {
-    SEND_NORM: 0,
-    CONF_ACK: 1,
-    MP: 2,
-    SB: 3,
-    SYS_EXT_ARMED: 4,
-    SYS_INT_ARMED: 5,
-    SYS_DISARMED: 6,
-    ALARM: 7,
-    INTRUSION: 8,
-    BATTERY_MALFUNCTION: 9,
-    POWER_OUTAGE: 10,
-    OPTICAL_FLASHER_MALFUNCTION: 11,
-    HORN_1_MALFUNCTION: 12,
-    HORN_2_MALFUNCTION: 13,
-    COM_FAULT: 14,
-    RESTART: 15,
-    USED_INPUTS: 16,
-    USED_OUTPUTS: 17,
-    USED_CONTACTS_INFO: 18,
-    USED_OUTPUT_CONTACTS_INFO: 19,
-    USED_SB_CONTACTS_INFO: 20,
-    USED_MB_CONTACTS_INFO: 21,
-    UNKNOWN: 22,
-    INVALID: 23
+  SEND_NORM: 0,
+  CONF_ACK: 1,
+  MP: 2,
+  SB: 3,
+  SYS_EXT_ARMED: 4,
+  SYS_INT_ARMED: 5,
+  SYS_DISARMED: 6,
+  ALARM: 7,
+  INTRUSION: 8,
+  BATTERY_MALFUNCTION: 9,
+  POWER_OUTAGE: 10,
+  OPTICAL_FLASHER_MALFUNCTION: 11,
+  HORN_1_MALFUNCTION: 12,
+  HORN_2_MALFUNCTION: 13,
+  COM_FAULT: 14,
+  RESTART: 15,
+  USED_INPUTS: 16,
+  USED_OUTPUTS: 17,
+  USED_CONTACTS_INFO: 18,
+  USED_OUTPUT_CONTACTS_INFO: 19,
+  USED_SB_CONTACTS_INFO: 20,
+  USED_MB_CONTACTS_INFO: 21,
+  UNKNOWN: 22,
+  INVALID: 23
 }
 const START_TO_MSG_TYPE = {
-	    "682C2C687302050201001001": TelenotMsgType.INTRUSION,
-			"681A1A687302050200001401": TelenotMsgType.BATTERY_MALFUNCTION,
-			"681A1A687302050200001501": TelenotMsgType.POWER_OUTAGE,
-			"681A1A687302050200001301": TelenotMsgType.OPTICAL_FLASHER_MALFUNCTION,
-			"681A1A687302050200001101": TelenotMsgType.HORN_1_MALFUNCTION,
-			"681A1A687302050200001201": TelenotMsgType.HORN_2_MALFUNCTION,
-			"681A1A687302050200001701": TelenotMsgType.COM_FAULT
+    "682C2C687302050201001001": TelenotMsgType.INTRUSION,
+    "681A1A687302050200001401": TelenotMsgType.BATTERY_MALFUNCTION,
+    "681A1A687302050200001501": TelenotMsgType.POWER_OUTAGE,
+    "681A1A687302050200001301": TelenotMsgType.OPTICAL_FLASHER_MALFUNCTION,
+    "681A1A687302050200001101": TelenotMsgType.HORN_1_MALFUNCTION,
+    "681A1A687302050200001201": TelenotMsgType.HORN_2_MALFUNCTION,
+    "681A1A687302050200001701": TelenotMsgType.COM_FAULT
 }
 
 module.exports = class SocketHandler {
@@ -52,13 +54,6 @@ module.exports = class SocketHandler {
     this.telenot = telenot;
     this.client = new net.Socket();
 
-    this.makeConnection();
-
-    return this;
-  }
-
-  makeConnection() {
-    this.logger.debug('Makeconnection...');
     this.client.connect(
       config.Connection.telnetConfig.port,
       config.Connection.telnetConfig.host, () => {
@@ -73,38 +68,30 @@ module.exports = class SocketHandler {
       this.handleError(error);
     });
     this.client.on('close', () => {
-      this.client.removeAllListeners();
       this.handleClose();
     });
-    this.client.setTimeout(timeout);
-    this.client.on('timeout', () => {
-        this.client.setTimeout(0);
-        this.client.end();
-    });
+    return this;
   }
 
   handleData(data) {
     let sendBack = null;
-    this.client.setTimeout(0);
     // sthis.parseDataNew(data);
     //this.logger.log('debug', `Raw Data: ${data.toString('hex')}`);
     sendBack = this.parseData(data.toString('hex'), data);
     if (sendBack !== null) {
       this.client.write(sendBack);
     }
-    this.client.setTimeout(timeout);
   }
 
   handleError(error) {
-    this.logger.info('Connection error');
     this.logger.error(error);
+    this.client.destroy();
   }
 
   handleClose() {
     this.logger.info('Connection closed');
-    this.client.destroy();
-		setTimeout(this.makeConnection.bind(this), timeout);
   }
+
 
   getMsgType(hexStr) {
 		let mt = null;
@@ -177,6 +164,7 @@ module.exports = class SocketHandler {
 
   parseData(hexStr, hex) {
     let sendBack = null;
+
     let msgtype = this.getMsgType(hexStr);
 
     this.logger.log('debug', 'got msgtype: ' + msgtype + ' - '+ Object.keys(TelenotMsgType)[Object.values(TelenotMsgType).indexOf(msgtype )]);
@@ -187,29 +175,23 @@ module.exports = class SocketHandler {
     } else if (SEND_NORM_REGEX.test(hexStr)) {
       this.logger.log('debug', 'Send CONF_ACK for SEND_NORM_REGEX');
       sendBack = CONF_ACK;
+//    } else if (REGEX_MELDEBEREICHE.test(hexStr)) {
     } else if (msgtype == TelenotMsgType.SB) {
-      //this.logger.log('debug', `Meldebereiche (${hexStr.length}) ${hexStr}`);
+      this.logger.log('debug', `Meldebereiche (${hexStr.length}) ${hexStr}`);
       this.telenot.decodeHex(hex, config.Telenot.MELDEBEREICHE.name);
       // this.telenot.decode(hexStr, config.Telenot.MELDEBEREICHE.name);
       sendBack = CONF_ACK;
-    } else if (msgtype == TelenotMsgType.MP) {
-      //this.logger.log('debug', `Meldegruppen (${hexStr.length}) ${hexStr}`);
+    } else if (REGEX_MELDEGRUPPEN.test(hexStr)) {
+      this.logger.log('debug', `Meldegruppen (${hexStr.length}) ${hexStr}`);
       this.telenot.decodeHex(hex, config.Telenot.MELDEGRUPPEN.name);
       // this.telenot.decode(hexStr, config.Telenot.MELDEGRUPPEN.name);
       sendBack = CONF_ACK;
-    } else if (msgtype == TelenotMsgType.SYS_INT_ARMED) {
-      this.telenot.mqttClient.publish('telenot/alarm/sb/int_armed', 'ON');
-      sendBack = CONF_ACK;      
-    } else if (msgtype == TelenotMsgType.SYS_DISARMED) {
-      this.telenot.mqttClient.publish('telenot/alarm/sb/int_armed', 'OFF');
-      this.telenot.mqttClient.publish('telenot/alarm/sb/ext_armed', 'OFF');
-      sendBack = CONF_ACK;          
     } else if (REGEX_SICHERUNGSBEREICH.test(hexStr)) {
-      this.logger.log('debug', `Sicherungsbereiche ${hexStr}`);
+      //this.logger.log('debug', `Sicherungsbereiche ${hexStr}`);
       this.telenot.decodeHex(hex, config.Telenot.SICHERUNGSBEREICH.name);
       sendBack = CONF_ACK;
     } else if (REGEX_SICHERUNGSBEREICH2.test(hexStr)) {
-      this.logger.log('debug', `Sicherungsbereiche 2 ${hexStr}`);
+      //this.logger.log('debug', `Sicherungsbereiche 2 ${hexStr}`);
       this.telenot.decodeHex(hex, config.Telenot.SICHERUNGSBEREICH2.name);
       sendBack = CONF_ACK;
     } else if (SEND_16.test(hexStr)) {
