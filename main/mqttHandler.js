@@ -17,14 +17,24 @@ module.exports = class MqttHandler {
     this.mqttClient.on('connect', () => {
       this.logger.info('MQTT Connected');
       // subscribe to topic for republish all states
+      /*
       this.mqttClient.subscribe(config.Connection.mqttConfig.publishTopic, (err) => {
         if (!err) {
-          // publish all current states
-          // client.publish('presence', 'Hello mqtt')
+          // publish all current states   
+          this.logger.info('MQTT subscribed to '+ config.Connection.mqttConfig.publishTopic);       
         } else if (err) {
           this.logger.error(JSON.stringify(err));
         }
-      });
+      }); // end subscribe republish
+      this.mqttClient.subscribe(config.Connection.mqttConfig.commandTopic, (err) => {
+        if (!err) {
+          // receive commands
+          this.logger.info('MQTT subscribed to '+ config.Connection.mqttConfig.commandTopic);       
+        } else if (err) {
+          this.logger.error(JSON.stringify(err));
+        }
+      }); // end subscribe command
+      */
     });
     return this;
   }

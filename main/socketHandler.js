@@ -179,6 +179,11 @@ module.exports = class SocketHandler {
     let sendBack = null;
     let msgtype = this.getMsgType(hexStr);
 
+    //  Set to retain messages on MQTT
+    const publishOptions={
+      retain:true
+    };
+
     this.logger.log('debug', 'got msgtype: ' + msgtype + ' - '+ Object.keys(TelenotMsgType)[Object.values(TelenotMsgType).indexOf(msgtype )]);
 
     if (hexStr === SEND_NORM) {
@@ -189,21 +194,28 @@ module.exports = class SocketHandler {
       sendBack = CONF_ACK;
     } else if (msgtype == TelenotMsgType.SB) {
       //this.logger.log('debug', `Meldebereiche (${hexStr.length}) ${hexStr}`);
-      this.telenot.decodeHex(hex, config.Telenot.MELDEBEREICHE.name);
-      // this.telenot.decode(hexStr, config.Telenot.MELDEBEREICHE.name);
+      this.telenot.decodeHex(hex, config.Telenot.MELDEBEREICHE.name);      
       sendBack = CONF_ACK;
     } else if (msgtype == TelenotMsgType.MP) {
       //this.logger.log('debug', `Meldegruppen (${hexStr.length}) ${hexStr}`);
-      this.telenot.decodeHex(hex, config.Telenot.MELDEGRUPPEN.name);
-      // this.telenot.decode(hexStr, config.Telenot.MELDEGRUPPEN.name);
+      this.telenot.decodeHex(hex, config.Telenot.MELDEGRUPPEN.name);      
       sendBack = CONF_ACK;
     } else if (msgtype == TelenotMsgType.SYS_INT_ARMED) {
-      this.telenot.mqttClient.publish('telenot/alarm/sb/int_armed', 'ON');
+      this.telenot.mqttClient.publish('telenot/alarm/sb/int_armed', 'ON', publishOptions);
+      this.telenot.mqttClient.publish(config.Connection.mqttConfig.stateTopic, 'armed_home', publishOptions);
       sendBack = CONF_ACK;      
     } else if (msgtype == TelenotMsgType.SYS_DISARMED) {
-      this.telenot.mqttClient.publish('telenot/alarm/sb/int_armed', 'OFF');
-      this.telenot.mqttClient.publish('telenot/alarm/sb/ext_armed', 'OFF');
+      this.telenot.mqttClient.publish('telenot/alarm/sb/int_armed', 'OFF', publishOptions);
+      this.telenot.mqttClient.publish('telenot/alarm/sb/ext_armed', 'OFF', publishOptions);
+      this.telenot.mqttClient.publish(config.Connection.mqttConfig.stateTopic, 'disarmed', publishOptions);
       sendBack = CONF_ACK;          
+    } else if (msgtype == TelenotMsgType.SYS_EXT_ARMED) {      
+      this.telenot.mqttClient.publish('telenot/alarm/sb/ext_armed', 'ON', publishOptions);
+      this.telenot.mqttClient.publish(config.Connection.mqttConfig.stateTopic, 'armed_away', publishOptions);
+      sendBack = CONF_ACK;    
+    } else if (msgtype == TelenotMsgType.ALARM) {      
+      this.telenot.mqttClient.publish('telenot/alarm/sb/alarm', 'ON', publishOptions);      
+      sendBack = CONF_ACK;    
     } else if (REGEX_SICHERUNGSBEREICH.test(hexStr)) {
       this.logger.log('debug', `Sicherungsbereiche ${hexStr}`);
       this.telenot.decodeHex(hex, config.Telenot.SICHERUNGSBEREICH.name);
